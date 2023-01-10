@@ -1,6 +1,8 @@
 # anime1.py
 CLI access to anime1.me (beta)
 
+![Cover image](cover.png)
+
 ## Usage
 
 - Install all dependencies

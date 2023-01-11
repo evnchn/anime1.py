@@ -9,6 +9,14 @@ import shutil
 import bs4 as bs
 import requests
 
+import re
+
+# https://stackoverflow.com/a/4703508
+numeric_const_pattern = '[-+]? (?: (?: \d* \. \d+ ) | (?: \d+ \.? ) )(?: [Ee] [+-]? \d+ ) ?'
+rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+
+
 def parseCookieFile(cookiefile): # https://stackoverflow.com/a/54659484
     """Parse a cookies.txt file and return a dictionary of key value pairs
     compatible with requests."""
@@ -118,15 +126,76 @@ while True:
                 page_id += 1
                 
                 
-            dict_urls = dict(sorted(dict_urls.items(), key=lambda item: float(item[0]))) # https://stackoverflow.com/a/613218
+            # dict_urls = dict(sorted(dict_urls.items(), key=lambda item: float(item[0]))) # https://stackoverflow.com/a/613218
+            
+            dict_urls = dict(reversed(dict_urls.items()))
+            
+            
+            dict_urls_numberonly = {k:v for k,v in dict_urls.items() if k.replace('.','',1).isdigit()} #https://stackoverflow.com/a/38329481
+            
+            dict_urls_not_numberonly = {k:v for k,v in dict_urls.items() if not k.replace('.','',1).isdigit()}
+            '''import pprint
+            pprint.pprint(dict_urls_numberonly)
+            pprint.pprint(dict_urls_not_numberonly)
+            input()'''
+            #assert len(dict_urls) == len(dict_urls_numberonly) + len(dict_urls_not_numberonly)
+            
+            dict_urls_contains_numbers = {k:v for k,v in dict_urls_not_numberonly.items() if any(char.isdigit() for char in k)} # https://stackoverflow.com/a/6649238
+            
+            dict_urls_not_contains_numbers = {k:v for k,v in dict_urls_not_numberonly.items() if not any(char.isdigit() for char in k)} # https://stackoverflow.com/a/6649238
+            
+            #assert len(dict_urls_not_numberonly) == len(dict_urls_contains_numbers) + len(dict_urls_not_contains_numbers)
+            
+            #dict_urls_numberonly
+            #dict_urls_contains_numbers
+            #dict_urls_not_contains_numbers
+            
+            #assert len(dict_urls) == len(dict_urls_numberonly) + len(dict_urls_contains_numbers) + len(dict_urls_not_contains_numbers)
+            
+            
+            dict_urls_numberonly = dict(sorted(dict_urls_numberonly.items(), key=lambda item: float(item[0])))
+            dict_urls_contains_numbers = dict(sorted(dict_urls_contains_numbers.items(), key=lambda item: float(rx.findall(item[0])[0])))
+            
+            '''import pprint
+            pprint.pprint(dict_urls_numberonly)
+            pprint.pprint(dict_urls_contains_numbers)
+            pprint.pprint(dict_urls_not_contains_numbers)
+            input()'''
+            
+            dict_urls = dict_urls_numberonly
+            dict_urls.update(dict_urls_contains_numbers)
+            dict_urls.update(dict_urls_not_contains_numbers)
+            
+            
+            
+            presscode = 1
+            
+            presscode_lookup_keys = {}
+            maxlength = max(len(str(k)) for k in dict_urls)
+            print(max([len(str(k)) for k in dict_urls if k.replace('.','',1).isdigit()]+[1]), len(str(len(dict_urls))), 1+len(str(len(list(k for k in dict_urls if not k.replace('.','',1).isdigit())))))
+            maxkeylength = max(max([len(str(k)) for k in dict_urls if k.replace('.','',1).isdigit()]+[1]), len(str(len(dict_urls))), 1+len(str(len(list(k for k in dict_urls if not k.replace('.','',1).isdigit())))))
             for k,v in dict_urls.items():
-                print("{}: {}".format(str(k).rjust(5, " "),v[1]))
-            selection = input()
-            if selection in dict_urls:
-                current_state = "https://anime1.me/{}".format(dict_urls[selection][0])
-                continue
+                if k.replace('.','',1).isdigit():
+                    presscode = k
+                else:
+                    if float(presscode) > 0:
+                        # not yet enter negative land
+                        presscode = -1
+                    else:
+                        presscode -= 1
+                
+                presscode_lookup_keys[str(presscode)] = k
+                print("[{}] => {}: {}".format(str(presscode).rjust(maxkeylength, " "), str(k).rjust(maxlength, " "),v[1]))
+            if len(dict_urls) > 1:
+                selection = input("[{}]: ".format("".rjust(maxkeylength, "?")))
+                if selection in presscode_lookup_keys:
+                    current_state = "https://anime1.me/{}".format(dict_urls[presscode_lookup_keys[selection]][0])
+                    continue
+                else:
+                    print("Invalid selection")
             else:
-                print("Invalid selection")
+                current_state = "https://anime1.me/{}".format(dict_urls[list(dict_urls.keys())[0]][0])
+                continue
             
     print("URL:", current_state)
     print(current_state)
